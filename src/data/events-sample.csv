@@ -1,0 +1,6 @@
+event_id,title,date,time,location_name,address,lat,lon,notes
+1,Club Meeting,2026-03-10,18:00,Main Hall,Campus,51.5074,-0.1278,Weekly meeting
+2,Guest Lecture,2026-03-15,14:00,Auditorium,Campus,51.5074,-0.1278,Special lecture by Dr. Smith
+3,Workshop,2026-03-20,10:00,Room 101,Campus,51.5074,-0.1278,Hands-on workshop on data science
+4,Networking Event,2026-03-25,19:00,Cafeteria,Campus,51.5074,-0.1278,Opportunity to connect with industry professionals
+5,Fundraising Gala,2026-04-01,20:00,Banquet Hall,City Center,51.5074,-0.1278,Annual fundraising event for charity
