@@ -11,9 +11,9 @@ from src.services.event_service import EventService
 class EventMap(tk.Frame):
 
     # parent is the window or frame that this map will sit inside
-    def __init__(self, parent, on_location_selected=None):
+    def __init__(self, parent, on_location_selected=None, bg='black'):
         # Initialise the Frame so it's ready to hold other widgets
-        super().__init__(parent)
+        super().__init__(parent, bg=bg)
 
         # Create an EventService so we can load events from the CSV
         self.event_service = EventService()

@@ -1,5 +1,7 @@
 # tkinter is Python's built-in library for making desktop GUIs (windows, buttons, text boxes etc.)
 import tkinter as tk
+# ttk provides themed widgets for a more modern look
+from tkinter import ttk
 # messagebox lets us show pop-up alert dialogs like errors or success messages
 from tkinter import messagebox
 
@@ -21,6 +23,9 @@ class MainWindow(tk.Tk):
 
         self.current_user = current_user
 
+        # Set black and white color scheme
+        self.configure(bg='black')
+
         # Set the text shown in the window's title bar
         self.title("AtTheFunc Event Manager")
         # Set the starting size of the window in pixels (width x height)
@@ -30,24 +35,24 @@ class MainWindow(tk.Tk):
         self.event_service = EventService()
 
         # --- Heading label at the top of the window ---
-        title_label = tk.Label(
+        title_label = ttk.Label(
             self,
             text="AtTheFunc Event Manager",
-            font=("Arial", 18, "bold")   # Large bold font makes this look like a heading
+            font=("Arial", 18, "bold"),   # Large bold font makes this look like a heading
         )
         # pack() places the widget in the window; pady adds vertical spacing around it
         title_label.pack(pady=10)
 
-        login_label = tk.Label(
+        login_label = ttk.Label(
             self,
             text=f"Logged in as: {self.current_user.get('username')} ({self.current_user.get('role')})",
-            font=("Arial", 10)
+            font=("Arial", 10),
         )
         login_label.pack()
 
         # --- Form area ---
         # A Frame is an invisible container used to group widgets together
-        form_frame = tk.Frame(self)
+        form_frame = tk.Frame(self, bg='black')
         # fill="x" stretches the frame to fill the full window width
         form_frame.pack(fill="x", padx=10, pady=10)
 
@@ -63,24 +68,24 @@ class MainWindow(tk.Tk):
         self.lon_entry      = self._make_field(form_frame, "Longitude", row=3, col=1)
 
         # Notes spans multiple columns so it is wider than the other fields
-        tk.Label(form_frame, text="Notes").grid(row=4, column=0, sticky="w", padx=5)
-        self.notes_entry = tk.Entry(form_frame, width=50)
+        ttk.Label(form_frame, text="Notes").grid(row=4, column=0, sticky="w", padx=5)
+        self.notes_entry = ttk.Entry(form_frame, width=50)
         # columnspan=3 makes this entry box stretch across 3 grid columns
         self.notes_entry.grid(row=4, column=1, columnspan=3, sticky="ew", padx=5, pady=5)
 
         # --- Buttons ---
-        button_frame = tk.Frame(self)
+        button_frame = tk.Frame(self, bg='black')
         button_frame.pack(fill="x", padx=10, pady=10)
 
         # Each button's command= points to the method that runs when the button is clicked
-        tk.Button(button_frame, text="Add Event",    command=self.add_event).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Delete Event", command=self.delete_event).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Reload Map",   command=self.reload_map).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="Add Event",    command=self.add_event).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="Delete Event", command=self.delete_event).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="Reload Map",   command=self.reload_map).pack(side="left", padx=5)
 
         # --- Map widget ---
         # Add the interactive map at the bottom of the window.
         # When the user clicks the map, coordinates are sent to on_map_location_selected.
-        self.map_frame = EventMap(self, on_location_selected=self.on_map_location_selected)
+        self.map_frame = EventMap(self, on_location_selected=self.on_map_location_selected, bg='black')
         # expand=True lets the map grow to fill any remaining space in the window
         self.map_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -89,9 +94,9 @@ class MainWindow(tk.Tk):
     def _make_field(self, parent, label, row, col=0, width=25):
         # Place the label text (e.g. "Event ID") to the left of the input box.
         # col * 2 spreads columns out so labels and entries alternate: 0, 1, 2, 3 ...
-        tk.Label(parent, text=label).grid(row=row, column=col * 2, sticky="w", padx=5, pady=3)
+        ttk.Label(parent, text=label).grid(row=row, column=col * 2, sticky="w", padx=5, pady=3)
         # Create the text input box
-        entry = tk.Entry(parent, width=width)
+        entry = ttk.Entry(parent, width=width)
         entry.grid(row=row, column=col * 2 + 1, padx=5, pady=3)
         # Return the entry so the caller can store it and read what the user typed
         return entry
