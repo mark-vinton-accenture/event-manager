@@ -15,14 +15,24 @@ class EventService:
             self.csv_path = os.path.join("src", "data", "events.csv")
         else:
             self.csv_path = csv_path
+        
+        # CACHING: Store the event list in memory so we don't re-read the CSV every time.
+        # Initialize it as None so we know we haven't loaded it yet.
+        self._cached_events = None
 
     # Reads every event from the CSV file and returns them as a list of dictionaries.
     # Each dictionary has keys like "title", "date", "lat" etc. matching the CSV columns.
+    # CACHING: Returns the cached list if available, otherwise reads from disk.
     def get_all_events(self):
+        # If we've already loaded the events into memory, return them right away (super fast!)
+        if self._cached_events is not None:
+            return self._cached_events
+        
         events = []
 
         # If the file doesn't exist yet there are no events to return
         if not os.path.exists(self.csv_path):
+            self._cached_events = events  # Cache the empty list
             return events
 
         # Open the file in read mode
@@ -31,6 +41,9 @@ class EventService:
             reader = csv.DictReader(file)
             for row in reader:
                 events.append(row)
+
+        # CACHING: Store the result in memory for next time
+        self._cached_events = events
         return events
 
     # Adds a new event to the CSV file.
@@ -63,6 +76,9 @@ class EventService:
 
             # Write the new event as a row in the CSV
             writer.writerow(event_data)
+        
+        # CACHING: Invalidate the cache since we just modified the CSV
+        self._invalidate_cache()
 
     # Removes the event with the given event_id from the CSV file.
     def delete_event(self, event_id, current_user):
@@ -86,6 +102,9 @@ class EventService:
 
         # Write the filtered list back to the file (replacing the old contents)
         self._rewrite_csv(updated_events)
+        
+        # CACHING: Invalidate the cache since we just deleted an event
+        self._invalidate_cache()
         return True, "Event deleted successfully."
 
     # Updates an existing event's details.
@@ -99,6 +118,14 @@ class EventService:
                 event.update(updated_event_data)  # dict.update() merges the new values in
 
         self._rewrite_csv(events)
+        
+        # CACHING: Invalidate the cache since we just updated an event
+        self._invalidate_cache()
+
+    # Private helper to clear the cache.
+    # Call this whenever the CSV file is modified so the next get_all_events() re-reads from disk.
+    def _invalidate_cache(self):
+        self._cached_events = None
 
     # Private helper method (the _ prefix is a convention meaning "don't call this from outside").
     # Completely overwrites the CSV file with the provided list of events.
@@ -122,3 +149,6 @@ class EventService:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()        # Write the column header row
             writer.writerows(events)    # Write all the event rows
+        
+        # CACHING: Update the in-memory cache with the new data
+        self._cached_events = events

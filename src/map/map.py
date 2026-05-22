@@ -1,88 +1,62 @@
-# tkinter is used here so EventMap can be a Frame (a panel inside the main window)
+import os
 import tkinter as tk
-# TkinterMapView is a third-party widget that shows an interactive map
 from tkintermapview import TkinterMapView
-# We need EventService to load events from the CSV so we can place pins on the map
 from src.services.event_service import EventService
+from src.gui import theme
+
+DARK_TILES = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+TILE_CACHE = os.path.join(os.path.dirname(__file__), '..', '..', 'map_tiles.db')
 
 
-# EventMap is a custom widget that displays the map and plots event markers on it.
-# It inherits from tk.Frame so it can be embedded inside the main window like any other widget.
 class EventMap(tk.Frame):
 
-    # parent is the window or frame that this map will sit inside
-    def __init__(self, parent, on_location_selected=None, bg='black'):
-        # Initialise the Frame so it's ready to hold other widgets
-        super().__init__(parent, bg=bg)
+    def __init__(self, parent, on_location_selected=None, bg=None):
+        super().__init__(parent, bg=bg or theme.BG)
 
-        # Create an EventService so we can load events from the CSV
         self.event_service = EventService()
-        # Keep track of all the markers currently on the map so we can remove them later
         self.markers = []
-        # Stores the temporary marker created when the user clicks on the map
         self.selected_location_marker = None
-        # Optional callback to send clicked coordinates back to the parent UI
         self.on_location_selected = on_location_selected
 
-        # Create the actual interactive map widget and place it inside this frame
-        self.map_widget = TkinterMapView(self, width=700, height=500)
+        self.map_widget = TkinterMapView(self, width=700, height=500, database_path=TILE_CACHE)
         self.map_widget.pack(fill="both", expand=True)
 
-        # Use CartoDB Positron — clean, minimal Apple Maps-style appearance
-        self.map_widget.set_tile_server("https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png")
-        # Centre the map on the UK when it first loads (lat 54.5, lon -2.5)
+        self.map_widget.set_tile_server(DARK_TILES)
         self.map_widget.set_position(54.5, -2.5)
-        # Zoom level 6 shows the whole of the UK
         self.map_widget.set_zoom(6)
 
-        # Enable clicking anywhere on the map to choose coordinates for a new event
         self.map_widget.add_left_click_map_command(self.handle_map_click)
 
-        # Load and display any events already saved in the CSV
         self.load_events_from_csv()
 
-    # Called when the user clicks on any point on the map.
-    # Coordinates are sent to the parent callback and shown with a temporary marker.
     def handle_map_click(self, coordinates):
         lat, lon = coordinates
 
-        # Replace the previous temporary "selected location" marker if it exists
         if self.selected_location_marker is not None:
             self.selected_location_marker.delete()
 
         self.selected_location_marker = self.map_widget.set_marker(
-            lat,
-            lon,
-            text="Selected location for new event"
+            lat, lon, text="Selected location for new event",
+            text_color=theme.SUCCESS, marker_color_circle=theme.SUCCESS,
         )
 
-        # Send coordinates back to the main window if a callback was provided
         if self.on_location_selected:
             self.on_location_selected(lat, lon)
 
-    # Removes all existing pins/markers from the map.
-    # Called before reloading events so we don't end up with duplicate markers.
     def clear_markers(self):
         for marker in self.markers:
-            marker.delete()  # Tell the map widget to remove this marker visually
-        self.markers = []    # Reset our list to empty
+            marker.delete()
+        self.markers = []
 
-    # Reads all events from the CSV and plots a pin on the map for each one.
     def load_events_from_csv(self):
-        # Remove any pins already on the map before adding fresh ones
         self.clear_markers()
-
-        # Get the full list of events from the CSV file
         events = self.event_service.get_all_events()
 
         for event in events:
             try:
-                # Convert the lat/lon strings from the CSV into decimal numbers
                 lat = float(event["lat"])
                 lon = float(event["lon"])
 
-                # Build the text that will appear when a user clicks the marker.
-                # f-strings (f"...") let us insert variable values directly into a string.
                 marker_text = (
                     f"{event['title']}\n"
                     f"Date: {event['date']}\n"
@@ -92,66 +66,77 @@ class EventMap(tk.Frame):
                     f"Notes: {event['notes']}"
                 )
 
-                # Place a marker pin at the given coordinates with a click handler.
-                # Clicking the marker opens a popup with full details and a mini map.
                 marker = self.map_widget.set_marker(
-                    lat,
-                    lon,
+                    lat, lon,
                     text=marker_text,
-                    command=lambda _marker=None, event=event, lat=lat, lon=lon: self.open_event_popup(event, lat, lon)
+                    text_color=theme.ACCENT,
+                    marker_color_circle=theme.PRIMARY,
+                    command=lambda _marker=None, event=event, lat=lat, lon=lon:
+                        self.open_event_popup(event, lat, lon)
                 )
-                # Save a reference to the marker so clear_markers() can remove it later
                 self.markers.append(marker)
 
             except (ValueError, KeyError):
-                # If a row in the CSV has a missing or non-numeric lat/lon, skip it
-                # and print a warning to the terminal instead of crashing
                 print(f"Skipping bad event row: {event}")
 
-    # Opens a new window showing full event details and a mini map focused on the event.
     def open_event_popup(self, event, lat, lon):
         popup = tk.Toplevel(self)
         popup.title(event.get("title", "Event Details"))
         popup.geometry("500x560")
+        popup.configure(bg=theme.BG)
         popup.transient(self.winfo_toplevel())
 
-        content = tk.Frame(popup)
-        content.pack(fill="both", expand=True, padx=12, pady=12)
-
+        # Popup header
+        header = tk.Frame(popup, bg=theme.PANEL)
+        header.pack(fill='x')
         tk.Label(
-            content,
+            header,
             text=event.get("title", "Untitled Event"),
-            font=("Arial", 14, "bold"),
-            anchor="w"
-        ).pack(fill="x", pady=(0, 8))
+            font=(theme.FONT, 14, 'bold'),
+            bg=theme.PANEL,
+            fg=theme.ACCENT,
+            anchor='w',
+        ).pack(fill='x', padx=12, pady=10)
+        tk.Frame(popup, bg=theme.BORDER, height=1).pack(fill='x')
+
+        content = tk.Frame(popup, bg=theme.BG)
+        content.pack(fill="both", expand=True, padx=12, pady=10)
 
         details = [
             ("Event ID", event.get("event_id", "")),
-            ("Date", event.get("date", "")),
-            ("Time", event.get("time", "")),
+            ("Date",     event.get("date", "")),
+            ("Time",     event.get("time", "")),
             ("Location", event.get("location", "")),
-            ("Address", event.get("address", "")),
+            ("Address",  event.get("address", "")),
             ("Latitude", str(lat)),
             ("Longitude", str(lon)),
-            ("Notes", event.get("notes", "")),
+            ("Notes",    event.get("notes", "")),
         ]
 
         for label, value in details:
-            tk.Label(
-                content,
-                text=f"{label}: {value}",
-                anchor="w",
-                justify="left",
-                wraplength=460
-            ).pack(fill="x", pady=2)
+            row = tk.Frame(content, bg=theme.BG)
+            row.pack(fill='x', pady=1)
+            tk.Label(row, text=f"{label}:", width=10, anchor='w',
+                     bg=theme.BG, fg=theme.LABEL,
+                     font=(theme.FONT, 9, 'bold')).pack(side='left')
+            tk.Label(row, text=value, anchor='w', justify='left',
+                     wraplength=360, bg=theme.BG, fg=theme.TEXT,
+                     font=(theme.FONT, 9)).pack(side='left')
 
-        tk.Label(content, text="Mini Map", font=("Arial", 11, "bold"), anchor="w").pack(fill="x", pady=(12, 6))
+        tk.Label(content, text="Location Preview",
+                 font=(theme.FONT, 10, 'bold'),
+                 bg=theme.BG, fg=theme.LABEL, anchor='w').pack(fill='x', pady=(10, 4))
 
-        mini_map = TkinterMapView(content, width=460, height=260)
-        mini_map.pack(fill="x")
-        mini_map.set_tile_server("https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png")
+        mini_map = TkinterMapView(content, width=460, height=220, database_path=TILE_CACHE)
+        mini_map.pack(fill='x')
+        mini_map.set_tile_server(DARK_TILES)
         mini_map.set_position(lat, lon)
         mini_map.set_zoom(14)
         mini_map.set_marker(lat, lon, text=event.get("title", "Event"))
 
-        tk.Button(content, text="Close", command=popup.destroy).pack(anchor="e", pady=(10, 0))
+        tk.Button(
+            content, text="Close", command=popup.destroy,
+            bg=theme.PRIMARY, fg='white', relief='flat',
+            font=(theme.FONT, 9), padx=12, pady=4,
+            activebackground='#1976D2', activeforeground='white', cursor='hand2',
+        ).pack(anchor='e', pady=(8, 0))
